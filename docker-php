@@ -31,6 +31,22 @@ ENV CLIENT_HOST=$REMOTE_HOST
 ENV CLIENT_PORT=$REMOTE_PORT
 ENV IDEKEY=$IDE_KEY
 
+# Codesniffer
+WORKDIR /tmp
+RUN curl -OL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar && \
+    cp /tmp/phpcs.phar /usr/local/bin/phpcs && \
+    chmod +x /usr/local/bin/phpcs
+# Set some useful defaults to phpcs
+# show_progress - I like to see a progress while phpcs does its magic
+# colors - Enable colors; My terminal supports more than black and white
+# report_width - I am using a large display so I can afford a larger width
+# encoding - Unicode all the way
+RUN /usr/local/bin/phpcs --config-set show_progress 1 && \
+    /usr/local/bin/phpcs --config-set colors 1 && \
+    /usr/local/bin/phpcs --config-set report_width 140 && \
+    /usr/local/bin/phpcs --config-set encoding utf-8
+# ENTRYPOINT ["/usr/local/bin/phpcs"]
+
 WORKDIR /var/www/booker
 
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
