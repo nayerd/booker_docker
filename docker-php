@@ -1,0 +1,58 @@
+FROM php:8.1-fpm
+
+RUN apt-get update && apt-get install -y curl sudo
+
+RUN apt update \
+    && apt install -y zlib1g-dev g++ git libicu-dev zip libzip-dev zip \
+    && docker-php-ext-install intl opcache pdo pdo_mysql \
+    && pecl install apcu \
+    && docker-php-ext-enable apcu \
+    && docker-php-ext-configure zip \
+    && docker-php-ext-install zip
+
+# Xdebug see https://medium.com/@sirajul.anik/install-and-configure-xdebug-3-in-a-docker-container-and-integrate-step-debugging-with-phpstorm-5e135bc3290a
+RUN pecl install xdebug \
+    && docker-php-ext-enable xdebug
+
+RUN mkdir -p /home/xdebug
+COPY ./php/xdebug/xdebug-debug.ini /home/xdebug/xdebug-debug.ini
+COPY ./php/xdebug/xdebug-default.ini /home/xdebug/xdebug-default.ini
+COPY ./php/xdebug/xdebug-off.ini /home/xdebug/xdebug-off.ini
+COPY ./php/xdebug/xdebug-profile.ini /home/xdebug/xdebug-profile.ini
+COPY ./php/xdebug/xdebug-trace.ini /home/xdebug/xdebug-trace.ini
+
+ARG XDEBUG_CUSTOM_MODE
+ARG REMOTE_HOST="host.docker.internal"
+ARG REMOTE_PORT=9003
+ARG IDE_KEY="docker"
+
+ENV XDEBUG_CUSTOM_MODE=$XDEBUG_CUSTOM_MODE
+ENV CLIENT_HOST=$REMOTE_HOST
+ENV CLIENT_PORT=$REMOTE_PORT
+ENV IDEKEY=$IDE_KEY
+
+WORKDIR /var/www/booker
+
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+COPY ./php/fpm-entrypoint.sh /home/fpm-entrypoint
+RUN chmod +x /home/fpm-entrypoint
+ENTRYPOINT ["/home/fpm-entrypoint"]
+
+# RUN git config --global user.email "" \ 
+#    && git config --global user.name ""
+
+#Nodejs
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+RUN sudo apt-get install -y nodejs
+RUN echo "NODE Version:" && node --version
+RUN echo "NPM Version:" && npm --version
+
+WORKDIR /home
+
+#Tools
+RUN mkdir -p /home/tools
+COPY ./php/tools /home/tools
+RUN chmod -R 777 /home/tools
+
+WORKDIR /var/www/booker

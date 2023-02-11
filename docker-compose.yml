@@ -1,0 +1,95 @@
+version: '3.8'
+    
+services:
+    mysql:
+        container_name: docker_mysql_booker
+        image: mysql
+        command: ['--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci','--default-authentication-plugin=mysql_native_password']
+        environment:
+          MYSQL_ROOT_PASSWORD: secret
+          MYSQL_DATABASE: booker_docker
+          MYSQL_USER: booker
+          MYSQL_PASSWORD: booker
+        ports:
+            - 3306:3306
+        volumes:
+            - ./mysql:/var/lib/mysql
+        networks:
+            - booker
+    mongo:
+        container_name: docker_mongo_booker
+        image: mongo
+        environment:
+            - MONGO_INITDB_DATABASE=booker_docker
+            - MONGO_INITDB_ROOT_USERNAME=booker
+            - MONGO_INITDB_ROOT_PASSWORD=booker
+        volumes:
+            - ./mongo/default.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+            - ./mongo/data:/data/db
+        ports:
+            - 27017-27019:27017-27019
+        networks:
+            - booker
+    php:
+        container_name: docker_php_booker
+        build:
+            context: .
+            dockerfile: docker-php
+            args:
+                # Available [trace|debug|profile]. Use Comma separated available values for multiple mode
+                # Use "off" to disable xdebug
+                #- XDEBUG_CUSTOM_MODE=debug,trace
+                - XDEBUG_CUSTOM_MODE=off
+                # Set the following values to overwrite the existing settings.
+                # Uncomment the following line and change value.
+                - REMOTE_HOST=host.docker.internal # Host machine IP
+                - REMOTE_PORT=9003 # IDE/Editor's listener port
+                - IDE_KEY=VSCODE # IDE's filter/listener key
+        environment:
+            APP_ENV: dev
+        ports:
+          - '9000:9000'
+        volumes:
+          - ../booker/:/var/www/booker/
+          # XDebug
+          # Use sudo if required.
+          # RUN: mkdir -p /tmp/xdebug
+          # RUN: chmod -R 777 /tmp/xdebug
+          # Log files will be written in this directory
+          - ./php/tmp/xdebug:/tmp/xdebug
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        networks:
+          - booker
+        depends_on:
+          - mysql
+          - mongo
+    frontend:
+        container_name: docker_frontend_booker
+        build:
+            context: .
+            dockerfile: docker-frontend
+        volumes:
+          - ./frontend/:/var/www/frontend/
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        networks:
+          - booker
+    nginx:
+        container_name: docker_nginx_booker
+        build:
+            context: .
+            dockerfile: docker-nginx
+        volumes:
+            - ../booker/:/var/www/booker/
+            - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+        ports:
+            - 8080:80
+        depends_on:
+            - php
+            - mysql
+            - mongo
+        networks:
+            - booker
+networks:
+    booker:
