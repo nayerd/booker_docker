@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# This access allow the php executable path to be available on the wsl calling this file from any folder
+# Change the current folder to an appropiate url
+/home/pablo/projects/booker_docker docker compose exec php /usr/local/bin/php
